@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: merchantshield
+    runtime: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: DEMO_SECRET
+        sync: false
+      - key: DATABASE_PATH
+        value: /app/server/data/merchantshield.db
+      - key: MODEL_PATH
+        value: /app/server/dist/model/risk_model_v1.json
+      - key: METRICS_REPORT_PATH
+        value: /app/server/dist/model/metrics_report.json
+    disk:
+      name: sqlite-data
+      mountPath: /app/server/data
+      sizeGB: 1

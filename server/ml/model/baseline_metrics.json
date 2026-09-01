@@ -1,0 +1,23 @@
+{
+  "model_version": "v1.0.0",
+  "metrics_holdout": {
+    "accuracy": 0.9802,
+    "precision": 0.6933,
+    "recall": 0.9649,
+    "f1": 0.8068,
+    "pr_auc": 0.7663,
+    "roc_auc": 0.9917,
+    "fpr": 0.0191,
+    "fnr": 0.0351,
+    "confusion_matrix": {
+      "tn": 3756,
+      "fp": 73,
+      "fn": 6,
+      "tp": 165
+    },
+    "threshold": 0.5,
+    "n_samples": 4000,
+    "n_positive": 171
+  },
+  "trained_at": "2026-08-31T16:08:35.068559+00:00Z"
+}

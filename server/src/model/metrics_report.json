@@ -1,0 +1,84 @@
+{
+  "model_version": "v1.0.0",
+  "trained_at": "2026-08-31T16:08:35.068559+00:00Z",
+  "train_fraction": 0.8,
+  "holdout_fraction": 0.2,
+  "train_samples": 16000,
+  "holdout_samples": 4000,
+  "holdout_positive": 171,
+  "chosen_model": {
+    "framework": "sklearn.GradientBoostingClassifier",
+    "metrics_holdout": {
+      "accuracy": 0.9795,
+      "precision": 0.6926,
+      "recall": 0.9357,
+      "f1": 0.796,
+      "pr_auc": 0.7582,
+      "roc_auc": 0.9913,
+      "fpr": 0.0185,
+      "fnr": 0.0643,
+      "confusion_matrix": {
+        "tn": 3758,
+        "fp": 71,
+        "fn": 11,
+        "tp": 160
+      },
+      "threshold": 0.5,
+      "n_samples": 4000,
+      "n_positive": 171
+    },
+    "metrics_train": {
+      "accuracy": 0.9872,
+      "precision": 0.7728,
+      "recall": 0.9927,
+      "f1": 0.8691,
+      "pr_auc": 0.956,
+      "roc_auc": 0.9981,
+      "fpr": 0.013,
+      "fnr": 0.0073,
+      "confusion_matrix": {
+        "tn": 15119,
+        "fp": 199,
+        "fn": 5,
+        "tp": 677
+      },
+      "threshold": 0.5,
+      "n_samples": 16000,
+      "n_positive": 682
+    }
+  },
+  "baseline": {
+    "framework": "sklearn.RandomForestClassifier",
+    "metrics_holdout": {
+      "accuracy": 0.9802,
+      "precision": 0.6933,
+      "recall": 0.9649,
+      "f1": 0.8068,
+      "pr_auc": 0.7663,
+      "roc_auc": 0.9917,
+      "fpr": 0.0191,
+      "fnr": 0.0351,
+      "confusion_matrix": {
+        "tn": 3756,
+        "fp": 73,
+        "fn": 6,
+        "tp": 165
+      },
+      "threshold": 0.5,
+      "n_samples": 4000,
+      "n_positive": 171
+    }
+  },
+  "feature_names": [
+    "amount_deviation",
+    "account_age",
+    "attempt_count",
+    "velocity",
+    "chargeback_history",
+    "refund_history",
+    "amount_magnitude"
+  ],
+  "threshold": 0.5,
+  "selection_note": "Chosen Gradient Boosting over Random Forest on PR-AUC and simulated business cost (higher PR-AUC => fewer false positives at comparable recall, lowering false-positive cost for merchants).",
+  "measured_vs_estimated": "All metrics are MEASURED on the held-out synthetic test set. They are estimates of live performance until production recalibration."
+}

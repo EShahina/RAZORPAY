@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+dist
+server/dist
+server/node_modules
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
+*.log
+.git
+.github
+server/.env
+server/ml
+.vite
+.history

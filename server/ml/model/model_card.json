@@ -1,0 +1,47 @@
+{
+  "model_name": "MerchantShield GradientBoostedTrees",
+  "model_version": "v1.0.0",
+  "trained_at": "2026-08-31T16:08:35.068559+00:00Z",
+  "framework": "scikit-learn GradientBoostingClassifier",
+  "problem": "binary classification: transaction is fraud (chargeback risk)",
+  "features": [
+    "amount_deviation",
+    "account_age",
+    "attempt_count",
+    "velocity",
+    "chargeback_history",
+    "refund_history",
+    "amount_magnitude"
+  ],
+  "training_data": {
+    "source": "synthetic corpus (server/ml/generate_dataset.py)",
+    "size": 20000,
+    "fraud_rate": 0.04265,
+    "pii": "ALL synthetic - no real customer data"
+  },
+  "evaluation": {
+    "split": "80/20 stratified",
+    "primary": "PR-AUC",
+    "metrics": {
+      "accuracy": 0.9795,
+      "precision": 0.6926,
+      "recall": 0.9357,
+      "f1": 0.796,
+      "pr_auc": 0.7582,
+      "roc_auc": 0.9913,
+      "fpr": 0.0185,
+      "fnr": 0.0643,
+      "confusion_matrix": {
+        "tn": 3758,
+        "fp": 71,
+        "fn": 11,
+        "tp": 160
+      },
+      "threshold": 0.5,
+      "n_samples": 4000,
+      "n_positive": 171
+    }
+  },
+  "intended_use": "Risk scoring for CNP ecommerce charges through Razorpay; merchant always makes final decision.",
+  "limitations": "Calibrated on synthetic data; must be recalibrated/validated on real merchant data before production."
+}
