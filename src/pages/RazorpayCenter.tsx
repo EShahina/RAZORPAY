@@ -315,17 +315,17 @@ export default function RazorpayCenter() {
         </div>
         <div className="flex items-center gap-4">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ring-1 ring-inset ${
-            testMode === false
+            testMode === true
               ? 'bg-purple-500/10 ring-purple-500/25'
               : 'bg-emerald-500/10 ring-emerald-500/25'
           }`}>
             <span className={`relative flex h-2 w-2 ${
-              testMode === false ? 'bg-purple-400' : 'bg-emerald-500'
+              testMode === true ? 'bg-purple-400' : 'bg-emerald-500'
             } rounded-full`} />
             <span className={`text-xs font-medium flex items-center gap-1 ${
-              testMode === false ? 'text-purple-400' : 'text-emerald-400'
+              testMode === true ? 'text-purple-400' : 'text-emerald-400'
             }`}>
-              {testMode === false ? 'Test mode' : 'Live / unconfigured'}
+              {testMode === true ? 'Test mode' : 'Live / unconfigured'}
             </span>
           </div>
           <button

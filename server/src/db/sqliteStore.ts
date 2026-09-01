@@ -197,6 +197,22 @@ export class SqliteStore implements Store {
 
     return transactions.length;
   }
+
+  async replaceAlerts(alerts: Record<string, unknown>[]): Promise<number> {
+    const db = getDb();
+    const insertAlert = db.prepare(
+      `INSERT OR REPLACE INTO alerts
+       (id, title, description, severity, status, transaction_ids, total_exposure,
+        spike_json, created_at, acknowledged_at, resolved_at)
+       VALUES (@id, @title, @description, @severity, @status, @transaction_ids,
+        @total_exposure, @spike_json, @created_at, @acknowledged_at, @resolved_at)`,
+    );
+    db.transaction(() => {
+      db.prepare(`DELETE FROM alerts`).run();
+      for (const a of alerts) insertAlert.run(a);
+    })();
+    return alerts.length;
+  }
 }
 
 // Re-export for type parity with the Mongo backend.

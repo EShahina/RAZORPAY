@@ -6,6 +6,7 @@ import type {
   FeedbackLabel,
   PaymentMethod,
   TransactionStatus,
+  Alert,
 } from '../types';
 
 /**
@@ -238,6 +239,89 @@ export async function recordFeedback(
     body: JSON.stringify({ label }),
   });
   return res.ok;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Alerts (loaded from + persisted to the backend)                           */
+/* ------------------------------------------------------------------------ */
+
+export interface BackendAlertRow {
+  id: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  transaction_ids?: string | null;
+  total_exposure?: number | null;
+  spike_json?: string | null;
+  created_at?: string | null;
+  acknowledged_at?: string | null;
+  resolved_at?: string | null;
+}
+
+interface BackendAlertsResponse {
+  data: BackendAlertRow[];
+}
+
+export async function fetchAlerts(): Promise<Alert[]> {
+  const res = await request<BackendAlertsResponse>('/api/alerts');
+  if (!res.ok || !res.data || !Array.isArray(res.data.data)) return [];
+  return res.data.data.map(mapAlertRow).filter((a): a is Alert => a !== null);
+}
+
+export async function acknowledgeAlertApi(id: string): Promise<boolean> {
+  const res = await request<{ ok: boolean }>(`/api/alerts/${encodeURIComponent(id)}/ack`, {
+    method: 'POST',
+    body: '{}',
+  });
+  return res.ok;
+}
+
+export async function resolveAlertApi(id: string): Promise<boolean> {
+  const res = await request<{ ok: boolean }>(`/api/alerts/${encodeURIComponent(id)}/resolve`, {
+    method: 'POST',
+    body: '{}',
+  });
+  return res.ok;
+}
+
+function mapAlertRow(row: BackendAlertRow): Alert | null {
+  if (!row || !row.id) return null;
+  let transactionIds: string[] = [];
+  if (row.transaction_ids) {
+    try {
+      const parsed = JSON.parse(row.transaction_ids);
+      if (Array.isArray(parsed)) transactionIds = parsed.map(String);
+    } catch {
+      transactionIds = [];
+    }
+  }
+  let spikeData: Alert['spikeData'] | undefined;
+  if (row.spike_json) {
+    try {
+      const s = JSON.parse(row.spike_json);
+      if (s && typeof s === 'object') spikeData = s as Alert['spikeData'];
+    } catch {
+      spikeData = undefined;
+    }
+  }
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    severity: (['info', 'warning', 'critical'] as const).includes(row.severity as Alert['severity'])
+      ? (row.severity as Alert['severity'])
+      : 'warning',
+    status: (['active', 'acknowledged', 'resolved'] as const).includes(row.status as Alert['status'])
+      ? (row.status as Alert['status'])
+      : 'active',
+    transactionIds,
+    totalExposure: Number(row.total_exposure) || 0,
+    createdAt: row.created_at || new Date().toISOString(),
+    ...(row.acknowledged_at ? { acknowledgedAt: row.acknowledged_at } : {}),
+    ...(row.resolved_at ? { resolvedAt: row.resolved_at } : {}),
+    ...(spikeData ? { spikeData } : {}),
+  };
 }
 
 export interface ScoreInput {

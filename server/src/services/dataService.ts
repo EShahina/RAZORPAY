@@ -149,8 +149,117 @@ export async function seedDatabase(modelPath: string): Promise<number> {
   }
 
   const count = await getStore().replaceCorpus(transactions, customers);
-  logger.info({ count }, 'database seeded from corpus');
+  const alertCount = await getStore().replaceAlerts(buildSeedAlerts(transactions));
+  logger.info({ count, alertCount }, 'database seeded from corpus');
   return count;
+}
+
+/** Deterministic set of operational alerts derived from the seeded transactions. */
+function buildSeedAlerts(transactions: Record<string, unknown>[]): Record<string, unknown>[] {
+  const first = (n: number) => transactions
+    .filter((t) => Number(t.risk_score) >= 75)
+    .slice(0, n)
+    .map((t) => String(t.id));
+  const totalExposure = (ids: string[]) =>
+    ids.reduce((sum, id) => {
+      const t = transactions.find((x) => x.id === id);
+      return sum + (t ? Number(t.amount) || 0 : 0);
+    }, 0);
+
+  const activeHighRisk = first(3);
+  return [
+    {
+      id: 'ALERT-001',
+      title: 'UPI Transaction Velocity Spike',
+      description: 'Detected a rapid increase in high-risk transactions across your storefront in the last 15 minutes.',
+      severity: 'critical',
+      status: 'active',
+      transaction_ids: JSON.stringify(activeHighRisk),
+      total_exposure: totalExposure(activeHighRisk),
+      spike_json: JSON.stringify({ baselineCount: 5, currentCount: 22, spikePercent: 340, windowMinutes: 15 }),
+      created_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+      acknowledged_at: null,
+      resolved_at: null,
+    },
+    {
+      id: 'ALERT-002',
+      title: 'High-Value Card Transaction from New Account',
+      description: 'A high-value card transaction was attempted from a newly created account with an out-of-country card BIN.',
+      severity: 'critical',
+      status: 'active',
+      transaction_ids: JSON.stringify([activeHighRisk[0] ?? '']),
+      total_exposure: activeHighRisk[0] ? Number(transactions.find((t) => t.id === activeHighRisk[0])?.amount) || 0 : 0,
+      spike_json: null,
+      created_at: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+      acknowledged_at: null,
+      resolved_at: null,
+    },
+    {
+      id: 'ALERT-003',
+      title: 'Multiple Failed Payment Attempts',
+      description: 'Multiple successive payment failures detected from disposable email accounts within a short window.',
+      severity: 'warning',
+      status: 'acknowledged',
+      transaction_ids: JSON.stringify([activeHighRisk[1] ?? '']),
+      total_exposure: activeHighRisk[1] ? Number(transactions.find((t) => t.id === activeHighRisk[1])?.amount) || 0 : 0,
+      spike_json: null,
+      created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+      acknowledged_at: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(),
+      resolved_at: null,
+    },
+    {
+      id: 'ALERT-004',
+      title: 'Account Takeover Suspected',
+      description: 'A large netbanking transaction from an account created days ago. Impossible-travel detected between login locations.',
+      severity: 'critical',
+      status: 'active',
+      transaction_ids: JSON.stringify([activeHighRisk[2] ?? '']),
+      total_exposure: activeHighRisk[2] ? Number(transactions.find((t) => t.id === activeHighRisk[2])?.amount) || 0 : 0,
+      spike_json: null,
+      created_at: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
+      acknowledged_at: null,
+      resolved_at: null,
+    },
+    {
+      id: 'ALERT-005',
+      title: 'Card Testing Pattern Detected',
+      description: 'Multiple micro-transactions from different cards originating from the same IP and disposable email.',
+      severity: 'warning',
+      status: 'resolved',
+      transaction_ids: JSON.stringify([activeHighRisk[0] ?? '']),
+      total_exposure: activeHighRisk[0] ? Number(transactions.find((t) => t.id === activeHighRisk[0])?.amount) || 0 : 0,
+      spike_json: null,
+      created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+      acknowledged_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+      resolved_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'ALERT-006',
+      title: 'High Refund Rate on Customer Account',
+      description: 'A customer has a rising refund rate with an increasing average risk score.',
+      severity: 'info',
+      status: 'acknowledged',
+      transaction_ids: JSON.stringify([activeHighRisk[1] ?? '']),
+      total_exposure: activeHighRisk[1] ? Number(transactions.find((t) => t.id === activeHighRisk[1])?.amount) || 0 : 0,
+      spike_json: null,
+      created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      acknowledged_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+      resolved_at: null,
+    },
+    {
+      id: 'ALERT-007',
+      title: 'Bot Activity on Payment Gateway',
+      description: 'Automated bot pattern detected with many payment attempts in a short window from a known proxy IP.',
+      severity: 'critical',
+      status: 'resolved',
+      transaction_ids: JSON.stringify([activeHighRisk[2] ?? '']),
+      total_exposure: activeHighRisk[2] ? Number(transactions.find((t) => t.id === activeHighRisk[2])?.amount) || 0 : 0,
+      spike_json: null,
+      created_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+      acknowledged_at: new Date(Date.now() - 70 * 60 * 1000).toISOString(),
+      resolved_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    },
+  ];
 }
 
 export type MerchantDecision = 'allow' | 'verify' | 'review' | 'manual_review' | 'block';

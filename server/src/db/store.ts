@@ -62,6 +62,7 @@ export interface Store {
 
   // ---- seeding (idempotent: replaces all rows/documents) ----
   replaceCorpus(transactions: Record<string, unknown>[], customers: Record<string, unknown>[]): Promise<number>;
+  replaceAlerts(alerts: Record<string, unknown>[]): Promise<number>;
 
   close(): Promise<void>;
 }

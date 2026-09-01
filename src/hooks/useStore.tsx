@@ -19,7 +19,7 @@ import {
   seedWebhookEvents,
   seedDailyStats,
 } from '../data/seedData';
-import { fetchTransactions, recordDecision as apiRecordDecision, recordFeedback as apiRecordFeedback } from '../api/client';
+import { fetchTransactions, fetchAlerts, acknowledgeAlertApi, resolveAlertApi, recordDecision as apiRecordDecision, recordFeedback as apiRecordFeedback } from '../api/client';
 
 interface StoreState {
   transactions: Transaction[];
@@ -32,6 +32,8 @@ interface StoreState {
   selectedTransaction: Transaction | null;
   selectedAlert: Alert | null;
   loading: boolean;
+  lastOpError: string | null;
+  lastOpSaved: { kind: string; id: string; at: number } | null;
   dataSource: 'backend' | 'seed';
 }
 
@@ -43,10 +45,10 @@ interface StoreActions {
   setReturns: (returns: Return[]) => void;
   setWebhookEvents: (events: WebhookEvent[]) => void;
   setDailyStats: (stats: DailyStats[]) => void;
-  acknowledgeAlert: (id: string) => void;
-  resolveAlert: (id: string) => void;
-  recordMerchantDecision: (txnId: string, decision: RiskAction, notes?: string) => void;
-  recordFeedback: (txnId: string, label: FeedbackLabel) => void;
+  acknowledgeAlert: (id: string) => Promise<boolean>;
+  resolveAlert: (id: string) => Promise<boolean>;
+  recordMerchantDecision: (txnId: string, decision: RiskAction, notes?: string) => Promise<boolean>;
+  recordFeedback: (txnId: string, label: FeedbackLabel) => Promise<boolean>;
   addWebhookEvent: (event: WebhookEvent) => void;
   selectTransaction: (txn: Transaction | null) => void;
   selectAlert: (alert: Alert | null) => void;
@@ -67,19 +69,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastOpError, setLastOpError] = useState<string | null>(null);
+  const [lastOpSaved, setLastOpSaved] = useState<{ kind: string; id: string; at: number } | null>(null);
   const [dataSource, setDataSource] = useState<'backend' | 'seed'>('seed');
 
-  // Load the transaction feed from the backend on mount. Falls back to the
-  // bundled seed corpus when the server is offline so the UI still renders.
+  // Load the transaction feed + alerts from the backend on mount. Falls back
+  // to the bundled seed corpus when the server is offline so the UI renders.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetchTransactions(500);
+      const [txRes, alertRes] = await Promise.all([
+        fetchTransactions(500),
+        fetchAlerts(),
+      ]);
       if (cancelled) return;
-      if (res.data.length > 0) {
-        setTransactions(res.data);
+      if (txRes.data.length > 0) {
+        setTransactions(txRes.data);
         setDataSource('backend');
       }
+      setAlerts(alertRes.length > 0 ? alertRes : seedAlerts);
       setLoading(false);
     })();
     return () => {
@@ -87,25 +95,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const acknowledgeAlert = useCallback((id: string) => {
+  const acknowledgeAlert = useCallback(async (id: string): Promise<boolean> => {
+    const ok = await acknowledgeAlertApi(id);
+    if (!ok) {
+      setLastOpError(`Could not acknowledge alert ${id} on the server.`);
+      return false;
+    }
+    setLastOpError(null);
+    setLastOpSaved({ kind: 'alert', id, at: Date.now() });
     setAlerts((prev) =>
       prev.map((a) =>
         a.id === id ? { ...a, status: 'acknowledged' as const, acknowledgedAt: new Date().toISOString() } : a
       )
     );
+    return true;
   }, []);
 
-  const resolveAlert = useCallback((id: string) => {
+  const resolveAlert = useCallback(async (id: string): Promise<boolean> => {
+    const ok = await resolveAlertApi(id);
+    if (!ok) {
+      setLastOpError(`Could not resolve alert ${id} on the server.`);
+      return false;
+    }
+    setLastOpError(null);
+    setLastOpSaved({ kind: 'alert', id, at: Date.now() });
     setAlerts((prev) =>
       prev.map((a) =>
         a.id === id ? { ...a, status: 'resolved' as const, resolvedAt: new Date().toISOString() } : a
       )
     );
+    return true;
   }, []);
 
-  const recordMerchantDecision = useCallback((txnId: string, decision: RiskAction, notes?: string) => {
-    // Persist to the backend (best-effort), then update local state immediately.
-    void apiRecordDecision(txnId, decision, notes);
+  const recordMerchantDecision = useCallback(async (txnId: string, decision: RiskAction, notes?: string): Promise<boolean> => {
+    const ok = await apiRecordDecision(txnId, decision, notes);
+    if (!ok) {
+      setLastOpError(`Could not save decision for ${txnId} on the server.`);
+      return false;
+    }
+    setLastOpError(null);
+    setLastOpSaved({ kind: 'decision', id: txnId, at: Date.now() });
     setTransactions((prev) =>
       prev.map((t) =>
         t.id === txnId
@@ -113,13 +142,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : t
       )
     );
+    return true;
   }, []);
 
-  const recordFeedback = useCallback((txnId: string, label: FeedbackLabel) => {
-    void apiRecordFeedback(txnId, label);
+  const recordFeedback = useCallback(async (txnId: string, label: FeedbackLabel): Promise<boolean> => {
+    const ok = await apiRecordFeedback(txnId, label);
+    if (!ok) {
+      setLastOpError(`Could not save feedback for ${txnId} on the server.`);
+      return false;
+    }
+    setLastOpError(null);
+    setLastOpSaved({ kind: 'feedback', id: txnId, at: Date.now() });
     setTransactions((prev) =>
       prev.map((t) => (t.id === txnId ? { ...t, feedbackLabel: label } : t))
     );
+    return true;
   }, []);
 
   const addWebhookEvent = useCallback((event: WebhookEvent) => {
@@ -145,6 +182,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     selectedTransaction,
     selectedAlert,
     loading,
+    lastOpError,
+    lastOpSaved,
     dataSource,
     setTransactions,
     setCustomers,

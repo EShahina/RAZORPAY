@@ -297,4 +297,13 @@ export class MongoStore implements Store {
     }
     return transactions.length;
   }
+
+  async replaceAlerts(alerts: Record<string, unknown>[]): Promise<number> {
+    const col = this.alertCol();
+    await col.deleteMany({});
+    for (let i = 0; i < alerts.length; i += 1000) {
+      await col.insertMany(alerts.slice(i, i + 1000));
+    }
+    return alerts.length;
+  }
 }

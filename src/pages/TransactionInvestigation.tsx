@@ -26,6 +26,7 @@ import {
   TrendingUp,
   TrendingDown,
   Banknote,
+  Loader2,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -96,6 +97,9 @@ export default function TransactionInvestigation() {
   const [decision, setDecision] = useState<RiskAction | null>(txn?.merchantDecision ?? null);
   const [notes, setNotes] = useState(txn?.investigationNotes ?? '');
   const [feedback, setFeedback] = useState<FeedbackLabel | null>(txn?.feedbackLabel ?? null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   // Pull the full transaction detail (with real factor contributions) from the
   // backend when available, falling back to the store copy.
@@ -141,15 +145,33 @@ export default function TransactionInvestigation() {
     value: f.value,
   }));
 
-  const handleSave = () => {
-    if (decision) {
-      recordMerchantDecision(txn.id, decision, notes);
+  const handleSave = async () => {
+    if (!decision) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaveMessage(null);
+    try {
+      const ok = await recordMerchantDecision(txn.id, decision, notes);
+      if (ok) {
+        setSaveMessage(`Decision saved: ${decision}${notes ? ' · with notes' : ''}`);
+      } else {
+        setSaveError(`Failed to save decision for ${txn.id}. Please try again.`);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleFeedback = (label: FeedbackLabel) => {
-    recordFeedback(txn.id, label);
+  const handleFeedback = async (label: FeedbackLabel) => {
     setFeedback(label);
+    setSaveError(null);
+    setSaveMessage(null);
+    const ok = await recordFeedback(txn.id, label);
+    if (ok) {
+      setSaveMessage(`Feedback saved: ${label}`);
+    } else {
+      setSaveError(`Failed to save feedback for ${txn.id}. Please try again.`);
+    }
   };
 
   return (
@@ -397,11 +419,24 @@ export default function TransactionInvestigation() {
             />
             <button
               onClick={handleSave}
-              disabled={!decision}
+              disabled={!decision || saving}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              <Save className="h-4 w-4" /> Save Decision
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? 'Saving…' : 'Save Decision'}
             </button>
+            {saveError && (
+              <div className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 text-red-400 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{saveError}</span>
+              </div>
+            )}
+            {saveMessage && (
+              <div className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-sm">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveMessage}</span>
+              </div>
+            )}
           </div>
 
           <div className="bg-zinc-900 rounded-xl ring-1 ring-zinc-800 p-6">

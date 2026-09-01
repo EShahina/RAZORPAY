@@ -46,7 +46,7 @@ const statusIcons: Record<string, React.ReactNode> = {
 };
 
 export default function AlertCenter() {
-  const { alerts, transactions, acknowledgeAlert, resolveAlert } = useStore();
+  const { alerts, transactions, acknowledgeAlert, resolveAlert, lastOpError, lastOpSaved } = useStore();
   const [activeTab, setActiveTab] = useState<AlertStatus | 'all'>('all');
   const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
 
@@ -91,6 +91,14 @@ export default function AlertCenter() {
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 space-y-6">
+      {(lastOpError || lastOpSaved) && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm ${
+          lastOpError ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
+        }`}>
+          {lastOpError ? <AlertTriangle className="h-4 w-4 shrink-0" /> : <CheckCircle className="h-4 w-4 shrink-0" />}
+          <span>{lastOpError || 'Alert updated on the server.'}</span>
+        </div>
+      )}
       <h1 className="text-2xl font-bold text-white tracking-tight">Alert Center</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
