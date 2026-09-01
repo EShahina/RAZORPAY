@@ -7,7 +7,6 @@ import type {
   Return,
   WebhookEvent,
   DailyStats,
-  DemoScenario,
   RiskAction,
   FeedbackLabel,
 } from '../types';
@@ -19,7 +18,6 @@ import {
   seedReturns,
   seedWebhookEvents,
   seedDailyStats,
-  seedDemoScenarios,
 } from '../data/seedData';
 import { fetchTransactions, recordDecision as apiRecordDecision, recordFeedback as apiRecordFeedback } from '../api/client';
 
@@ -31,9 +29,6 @@ interface StoreState {
   returns: Return[];
   webhookEvents: WebhookEvent[];
   dailyStats: DailyStats[];
-  demoScenarios: DemoScenario[];
-  demoMode: boolean;
-  demoStep: number;
   selectedTransaction: Transaction | null;
   selectedAlert: Alert | null;
   loading: boolean;
@@ -48,17 +43,11 @@ interface StoreActions {
   setReturns: (returns: Return[]) => void;
   setWebhookEvents: (events: WebhookEvent[]) => void;
   setDailyStats: (stats: DailyStats[]) => void;
-  setDemoScenarios: (scenarios: DemoScenario[]) => void;
-  setDemoMode: (mode: boolean) => void;
-  setDemoStep: (step: number) => void;
   acknowledgeAlert: (id: string) => void;
   resolveAlert: (id: string) => void;
   recordMerchantDecision: (txnId: string, decision: RiskAction, notes?: string) => void;
   recordFeedback: (txnId: string, label: FeedbackLabel) => void;
   addWebhookEvent: (event: WebhookEvent) => void;
-  startDemo: () => void;
-  nextDemoStep: () => void;
-  resetDemo: () => void;
   selectTransaction: (txn: Transaction | null) => void;
   selectAlert: (alert: Alert | null) => void;
 }
@@ -75,9 +64,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [returns, setReturns] = useState<Return[]>(seedReturns);
   const [webhookEvents, setWebhookEvents] = useState<WebhookEvent[]>(seedWebhookEvents);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>(seedDailyStats);
-  const [demoScenarios, setDemoScenarios] = useState<DemoScenario[]>(seedDemoScenarios);
-  const [demoMode, setDemoMode] = useState(false);
-  const [demoStep, setDemoStep] = useState(0);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,25 +126,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setWebhookEvents((prev) => [event, ...prev]);
   }, []);
 
-  const startDemo = useCallback(() => {
-    setDemoMode(true);
-    setDemoStep(0);
-  }, []);
-
-  const nextDemoStep = useCallback(() => {
-    setDemoStep((prev) => prev + 1);
-  }, []);
-
-  const resetDemo = useCallback(() => {
-    setDemoMode(false);
-    setDemoStep(0);
-    setTransactions(seedTransactions);
-    setAlerts(seedAlerts);
-    setDataSource('seed');
-    setSelectedTransaction(null);
-    setSelectedAlert(null);
-  }, []);
-
   const selectTransaction = useCallback((txn: Transaction | null) => {
     setSelectedTransaction(txn);
   }, []);
@@ -175,9 +142,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     returns,
     webhookEvents,
     dailyStats,
-    demoScenarios,
-    demoMode,
-    demoStep,
     selectedTransaction,
     selectedAlert,
     loading,
@@ -189,17 +153,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setReturns,
     setWebhookEvents,
     setDailyStats,
-    setDemoScenarios,
-    setDemoMode,
-    setDemoStep,
     acknowledgeAlert,
     resolveAlert,
     recordMerchantDecision,
     recordFeedback,
     addWebhookEvent,
-    startDemo,
-    nextDemoStep,
-    resetDemo,
     selectTransaction,
     selectAlert,
   };

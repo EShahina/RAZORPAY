@@ -11,19 +11,11 @@ import { logger } from '../lib/logger.js';
 export function seedRouter(config: Config): Router {
   const router = Router();
 
-  router.post('/', (req: Request, res: Response) => {
-    const parsed = z
+  router.post('/', async (req: Request, res: Response) => {
+    await z
       .object({ confirm: z.enum(['true', 'false', '1', '0']).or(z.boolean()).optional() })
       .safeParse(req.body ?? {});
-    if (
-      req.body &&
-      typeof req.body === 'object' &&
-      !('confirm' in req.body) &&
-      !('force' in req.body)
-    ) {
-      // allow simple POST {} to trigger reseed for the demo, but require no auth token
-    }
-    const count = seedDatabase(config.modelPath);
+    const count = await seedDatabase(config.modelPath);
     logger.info({ count }, 'database reseeded via /api/seed');
     return res.json({ ok: true, count, message: `seeded ${count} transactions` });
   });

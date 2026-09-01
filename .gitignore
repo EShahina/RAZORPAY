@@ -36,3 +36,8 @@ server/*.log
 server/*.pid
 server/ml/data/corpus.csv
 server/ml/data/corpus_meta.json
+
+# TypeScript build info
+server/*.tsbuildinfo	server/dist/
+dist/
+*.tsbuildinfo

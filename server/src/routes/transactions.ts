@@ -5,7 +5,7 @@ import type { Config } from '../config.js';
 import { scoreRawEvent } from '../services/risk.js';
 import { computeFeatures } from '../services/features.js';
 import { getModel } from '../model/scorer.js';
-import { getDb } from '../db/index.js';
+import { getStore } from '../db/store.js';
 import { recordMerchantDecision, recordFeedback } from '../services/dataService.js';
 import { logger } from '../lib/logger.js';
 
@@ -47,35 +47,23 @@ export function transactionsRouter(config: Config): Router {
   });
 
   // GET /api/transactions
-  router.get('/', (req: Request, res: Response) => {
+  router.get('/', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(String(req.query.limit || '50'), 10) || 50, 500);
     const offset = parseInt(String(req.query.offset || '0'), 10) || 0;
-    const rows = getDb()
-      .prepare(
-        `SELECT id, order_id, merchant_id, amount, currency, payment_method, email,
-                status, risk_score, risk_level, action, confidence, explanation,
-                created_at, merchant_decision, feedback
-         FROM transactions ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      )
-      .all(limit, offset);
-    const count = (getDb().prepare(`SELECT COUNT(*) AS c FROM transactions`).get() as { c: number }).c;
-    return res.json({ data: rows, total: count, limit, offset });
+    const { rows, total } = await getStore().listTransactions(limit, offset);
+    return res.json({ data: rows, total, limit, offset });
   });
 
   // GET /api/transactions/:id (with factors + explanation)
-  router.get('/:id', (req: Request, res: Response) => {
+  router.get('/:id', async (req: Request, res: Response) => {
     const id = String(req.params.id);
-    const row = getDb()
-      .prepare(
-        `SELECT * FROM transactions WHERE id = ? OR order_id = ?`,
-      )
-      .get(id, id);
+    const row = await getStore().getTransaction(id);
     if (!row) return res.status(404).json({ error: 'transaction not found' });
     return res.json(row);
   });
 
   // POST /api/transactions/:id/review — merchant decision (human-in-the-loop)
-  router.post('/:id/review', (req: Request, res: Response) => {
+  router.post('/:id/review', async (req: Request, res: Response) => {
     const schema = z.object({
       decision: z.enum(['allow', 'verify', 'review', 'manual_review', 'block']),
       notes: z.string().max(2000).optional(),
@@ -83,19 +71,19 @@ export function transactionsRouter(config: Config): Router {
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid decision', issues: parsed.error.issues });
     const id = String(req.params.id);
-    const ok = recordMerchantDecision(id, parsed.data.decision, parsed.data.notes);
+    const ok = await recordMerchantDecision(id, parsed.data.decision, parsed.data.notes);
     if (!ok) return res.status(404).json({ error: 'transaction not found' });
     logger.info({ txnId: id, decision: parsed.data.decision }, 'merchant decision recorded');
     return res.json({ ok: true, decision: parsed.data.decision });
   });
 
   // POST /api/transactions/:id/feedback
-  router.post('/:id/feedback', (req: Request, res: Response) => {
+  router.post('/:id/feedback', async (req: Request, res: Response) => {
     const schema = z.object({ label: z.enum(['legitimate', 'fraudulent']) });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid feedback' });
     const id = String(req.params.id);
-    const ok = recordFeedback(id, parsed.data.label);
+    const ok = await recordFeedback(id, parsed.data.label);
     if (!ok) return res.status(404).json({ error: 'transaction not found' });
     return res.json({ ok: true, label: parsed.data.label });
   });

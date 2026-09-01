@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import type { Config } from '../config.js';
-import { getDb } from '../db/index.js';
+import { getStore } from '../db/store.js';
 import { getModel } from '../model/scorer.js';
 
 /**
@@ -21,18 +21,9 @@ export function metricsRouter(config: Config): Router {
     return res.json(getModelInfo());
   });
 
-  router.get('/model/health', (_req: Request, res: Response) => {
+  router.get('/model/health', async (_req: Request, res: Response) => {
     const model = getModel();
-    const totals = (
-      getDb()
-        .prepare(
-          `SELECT COUNT(*) AS total,
-                  SUM(CASE WHEN risk_score >= 75 THEN 1 ELSE 0 END) AS flagged,
-                  SUM(CASE WHEN action IN ('review','manual_review') THEN 1 ELSE 0 END) AS reviews
-           FROM transactions`,
-        )
-        .get() as { total: number; flagged: number; reviews: number }
-    );
+    const totals = await getStore().healthTotals();
     return res.json({
       status: 'healthy',
       modelVersion: model.model_version,

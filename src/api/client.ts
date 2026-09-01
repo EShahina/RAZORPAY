@@ -272,3 +272,117 @@ export async function fetchSimulatorPolicy(threshold = 60): Promise<SimulatorPol
   const res = await request<SimulatorPolicyResponse>(`/api/simulator/policy?threshold=${threshold}`);
   return res.data;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Razorpay test-mode integration (Orders API + checkout verification)       */
+/* ------------------------------------------------------------------------ */
+
+export interface RazorpayOrderResponse {
+  order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+  test_mode: boolean;
+  receipt: string;
+}
+
+export interface RazorpayPaymentResult {
+  verified: boolean;
+  status: string;
+  captured: boolean;
+  payment_id: string;
+  transactionId: string;
+  orderId: string;
+  amount: number;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  action: RiskAction;
+  explanation: string;
+}
+
+export async function createRazorpayOrder(input: {
+  amount: number;
+  currency?: string;
+  receipt?: string;
+  email?: string;
+  phone?: string;
+}): Promise<{ ok: boolean; data: RazorpayOrderResponse | null; error?: string; hint?: string }> {
+  const res = await request<{ error?: string; hint?: string; detail?: string } & RazorpayOrderResponse>(
+    '/api/razorpay/orders',
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+  if (!res.ok || !res.data || !res.data.order_id) {
+    const d = res.data as { error?: string; hint?: string; detail?: string } | null;
+    return { ok: false, data: null, error: d?.error || 'Failed to create Razorpay order', hint: d?.hint };
+  }
+  return { ok: true, data: res.data };
+}
+
+export async function verifyRazorpayPayment(input: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}): Promise<{ ok: boolean; data: RazorpayPaymentResult | null; error?: string }> {
+  const res = await request<{ error?: string; detail?: string } & RazorpayPaymentResult>(
+    '/api/razorpay/verify',
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+  if (!res.ok || !res.data || !res.data.verified) {
+    const d = res.data as { error?: string; detail?: string } | null;
+    return { ok: false, data: null, error: d?.error || 'Payment verification failed' };
+  }
+  return { ok: true, data: res.data };
+}
+
+export interface RazorpayPaymentRow {
+  payment_id: string;
+  status: string;
+  amount: number;
+  currency: string;
+  method: string;
+  email: string;
+  contact: string;
+  card_last4?: string;
+  created_at: number;
+}
+
+export async function fetchRazorpayPayments(count = 20): Promise<{
+  ok: boolean;
+  data: RazorpayPaymentRow[] | null;
+  error?: string;
+  hint?: string;
+}> {
+  const res = await request<{ error?: string; hint?: string; detail?: string } & { items?: RazorpayPaymentRow[] }>(
+    `/api/razorpay/payments?count=${count}`,
+  );
+  if (!res.ok || !res.data || !res.data.items) {
+    const d = res.data as { error?: string; hint?: string; detail?: string } | null;
+    return { ok: false, data: null, error: d?.error || 'Failed to fetch payments', hint: d?.hint };
+  }
+  return { ok: true, data: res.data.items };
+}
+
+export interface WebhookTestResult {
+  received: boolean;
+  event: string;
+  txnId: string | null;
+  risk: { score: number; level: string; action: string } | null;
+  tested_event: Record<string, unknown>;
+}
+
+export async function testRazorpayWebhook(event?: string): Promise<{
+  ok: boolean;
+  data: WebhookTestResult | null;
+  error?: string;
+}> {
+  const res = await request<{ error?: string; detail?: string } & WebhookTestResult>(
+    '/api/razorpay/test-webhook',
+    { method: 'POST', body: JSON.stringify(event ? { event } : {}) },
+  );
+  if (!res.ok || !res.data || !res.data.received) {
+    const d = res.data as { error?: string; detail?: string } | null;
+    return { ok: false, data: null, error: d?.error || 'Webhook test failed' };
+  }
+  return { ok: true, data: res.data };
+}
+

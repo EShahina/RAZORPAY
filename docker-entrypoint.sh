@@ -1,14 +1,18 @@
 #!/bin/sh
 set -e
 
-# Seed the SQLite database if it does not exist yet (first boot on a fresh
-# persistent disk). The seed script is idempotent: it replaces all rows, so
-# running it on every boot would wipe merchant decisions/feedback. Hence the
-# existence check.
-if [ ! -f "$DATABASE_PATH" ]; then
-  echo "==> Database not found, seeding $DATABASE_PATH ..."
-  node ./server/dist/scripts/seed.js
-  echo "==> Seeding complete."
+# With MongoDB configured the server seeds the collections itself on first boot
+# (only when empty), so the file-based seed below is for the SQLite fallback.
+if [ -z "$MONGODB_URI" ]; then
+  # Seed the SQLite database if it does not exist yet (first boot on a fresh
+  # persistent disk). The seed script is idempotent: it replaces all rows, so
+  # running it on every boot would wipe merchant decisions/feedback. Hence the
+  # existence check.
+  if [ ! -f "$DATABASE_PATH" ]; then
+    echo "==> Database not found, seeding $DATABASE_PATH ..."
+    node ./server/dist/scripts/seed.js
+    echo "==> Seeding complete."
+  fi
 fi
 
 echo "==> Starting MerchantShield server on :$PORT ..."

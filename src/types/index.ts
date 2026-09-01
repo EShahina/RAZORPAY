@@ -157,18 +157,6 @@ export interface ModelDrift {
   isDrifting: boolean;
 }
 
-export interface DemoScenario {
-  id: string;
-  name: string;
-  description: string;
-  amount: number;
-  paymentMethod: PaymentMethod;
-  customerEmail: string;
-  expectedRisk: RiskLevel;
-  expectedAction: RiskAction;
-  tags: string[];
-}
-
 export interface DailyStats {
   date: string;
   transactions: number;

@@ -1,11 +1,10 @@
-import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scoreRawEvent } from './risk.js';
 import { computeFeatures } from './features.js';
 import { getModel, loadModel } from '../model/scorer.js';
-import { getDb } from '../db/index.js';
+import { getStore } from '../db/store.js';
 import { logger } from '../lib/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,102 +91,84 @@ function parseCsvLine(line: string): string[] {
 }
 
 /**
- * Regenerate the SQLite corpus from the CSV, scoring each row with the real model.
- * Replaces all existing rows (idempotent seed) — used by POST /api/seed and startup.
+ * Regenerate the corpus from the CSV, scoring each row with the real model.
+ * Replaces all existing rows/documents (idempotent seed) — used by POST /api/seed
+ * and startup. Works on whichever store is active (SQLite or MongoDB).
  */
-export function seedDatabase(modelPath: string): number {
+export async function seedDatabase(modelPath: string): Promise<number> {
   loadModel(modelPath);
   const model = getModel();
   const rows = loadCorpusRows();
-  const db = getDb();
-  const insertTx = db.prepare(
-    `INSERT OR REPLACE INTO transactions
-     (id, order_id, merchant_id, vertical, amount, currency, payment_method, email, phone,
-      device_id, customer_id, status, risk_score, risk_level, action, confidence,
-      features_json, factors_json, explanation, actual_fraud, created_at)
-     VALUES (@id, @order_id, @merchant_id, @vertical, @amount, 'INR', @payment_method,
-      @email, @phone, @device_id, @customer_id, 'completed', @risk_score, @risk_level,
-      @action, @confidence, @features_json, @factors_json, @explanation, @actual_fraud, @created)`,
-  );
+  const transactions: Record<string, unknown>[] = [];
+  const customers: Record<string, unknown>[] = [];
 
-  const insertCustomer = db.prepare(
-    `INSERT OR IGNORE INTO customers
-     (id, email, phone, name, account_age_days, prior_chargebacks, prior_refunds, created_at)
-     VALUES (@id, @email, @phone, @name, @account_age_days, @prior_chargebacks, @prior_refunds, @created_at)`,
-  );
+  for (const row of rows) {
+    const result = scoreRawEvent({
+      amount: row.amount,
+      merchantAvgAmount: 2000,
+      accountAgeDays: Math.max(0, Math.round(30 - row.features.account_age * 30)),
+      attemptCount: 1 + Math.round(row.features.attempt_count * 7),
+      velocity: Math.round(row.features.velocity * 20),
+      priorChargebacks: row.features.chargeback_history / 4,
+      priorRefunds: row.features.refund_history / 3,
+      model,
+    });
+    customers.push({
+      id: row.customer_id,
+      email: row.email,
+      phone: row.phone,
+      name: '',
+      account_age_days: Math.max(0, Math.round(30 - row.features.account_age * 30)),
+      prior_chargebacks: row.features.chargeback_history / 4,
+      prior_refunds: row.features.refund_history / 3,
+      created_at: row.created,
+    });
+    transactions.push({
+      id: row.id,
+      order_id: row.order_id,
+      merchant_id: row.merchant_id,
+      vertical: 'ecommerce',
+      amount: row.amount,
+      currency: 'INR',
+      payment_method: row.payment_method,
+      email: row.email,
+      phone: row.phone,
+      device_id: row.device_id,
+      customer_id: row.customer_id,
+      status: 'completed',
+      risk_score: result.riskScore,
+      risk_level: result.level,
+      action: result.action,
+      confidence: result.confidence,
+      features_json: JSON.stringify(row.features),
+      factors_json: JSON.stringify(result.contributions),
+      explanation: result.explanation,
+      actual_fraud: row.actualFraud ? 1 : 0,
+      created_at: row.created,
+    });
+  }
 
-  db.prepare(`DELETE FROM transactions`).run();
-  db.prepare(`DELETE FROM customers`).run();
-
-  db.transaction(() => {
-    for (const row of rows) {
-      const result = scoreRawEvent({
-        amount: row.amount,
-        merchantAvgAmount: 2000,
-        accountAgeDays: Math.max(0, Math.round(30 - row.features.account_age * 30)),
-        attemptCount: 1 + Math.round(row.features.attempt_count * 7),
-        velocity: Math.round(row.features.velocity * 20),
-        priorChargebacks: row.features.chargeback_history / 4,
-        priorRefunds: row.features.refund_history / 3,
-        model,
-      });
-      insertCustomer.run({
-        id: row.customer_id,
-        email: row.email,
-        phone: row.phone,
-        name: '',
-        account_age_days: Math.max(0, Math.round(30 - row.features.account_age * 30)),
-        prior_chargebacks: row.features.chargeback_history / 4,
-        prior_refunds: row.features.refund_history / 3,
-        created_at: row.created,
-      });
-      insertTx.run({
-        id: row.id,
-        order_id: row.order_id,
-        merchant_id: row.merchant_id,
-        vertical: 'ecommerce',
-        amount: row.amount,
-        payment_method: row.payment_method,
-        email: row.email,
-        phone: row.phone,
-        device_id: row.device_id,
-        customer_id: row.customer_id,
-        risk_score: result.riskScore,
-        risk_level: result.level,
-        action: result.action,
-        confidence: result.confidence,
-        features_json: JSON.stringify(row.features),
-        factors_json: JSON.stringify(result.contributions),
-        explanation: result.explanation,
-        actual_fraud: row.actualFraud ? 1 : 0,
-        created: row.created,
-      });
-    }
-  })();
-
-  logger.info({ count: rows.length }, 'database seeded from corpus');
-  return rows.length;
+  const count = await getStore().replaceCorpus(transactions, customers);
+  logger.info({ count }, 'database seeded from corpus');
+  return count;
 }
 
 export type MerchantDecision = 'allow' | 'verify' | 'review' | 'manual_review' | 'block';
 
 /** Record a merchant's final decision on a transaction (Part 6: human-in-the-loop). */
-export function recordMerchantDecision(txnId: string, decision: MerchantDecision, notes?: string): boolean {
-  const db = getDb();
-  const info = db
-    .prepare(`UPDATE transactions SET merchant_decision = @d, investigation_notes = @n WHERE id = @id`)
-    .run({ d: decision, n: notes ?? null, id: txnId });
-  return info.changes > 0;
+export async function recordMerchantDecision(
+  txnId: string,
+  decision: MerchantDecision,
+  notes?: string,
+): Promise<boolean> {
+  return getStore().updateMerchantDecision(txnId, decision, notes ?? null);
 }
 
 /** Record fraud feedback (ground truth) for model monitoring/eval. */
-export function recordFeedback(txnId: string, label: string): boolean {
-  const db = getDb();
-  const info = db.prepare(`UPDATE transactions SET feedback = @label WHERE id = @id`).run({ label, id: txnId });
-  return info.changes > 0;
+export async function recordFeedback(txnId: string, label: string): Promise<boolean> {
+  return getStore().updateFeedback(txnId, label);
 }
 
-export function countTransactions(): number {
-  const row = getDb().prepare(`SELECT COUNT(*) AS c FROM transactions`).get() as { c: number };
-  return row.c;
+export function countTransactions(): Promise<number> {
+  return getStore().countTransactions();
 }

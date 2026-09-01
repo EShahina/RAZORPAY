@@ -12,6 +12,8 @@ export interface Config {
   databasePath: string;
   modelPath: string;
   metricsReportPath: string;
+  mongoUri: string;
+  mongoDbName: string;
   razorpayWebhookSecret: string;
   razorpayKeyId: string;
   razorpayKeySecret: string;
@@ -43,6 +45,8 @@ export function loadConfig(): Config {
     metricsReportPath: process.env.METRICS_REPORT_PATH
       ? path.resolve(process.env.METRICS_REPORT_PATH)
       : path.resolve(__dirname, './model/metrics_report.json'),
+    mongoUri: process.env.MONGODB_URI || '',
+    mongoDbName: process.env.MONGODB_DB_NAME || mongoDbNameFromUri(process.env.MONGODB_URI) || 'merchantshield',
     razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || 'razorpay_demo_secret_change_me',
     razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
     razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
@@ -55,4 +59,15 @@ function num(v: string | undefined, dflt: number): number {
   if (!v) return dflt;
   const p = parseFloat(v);
   return Number.isFinite(p) ? p : dflt;
+}
+
+/** Extract the database name from a mongodb URI, if present (`.../dbname`). */
+function mongoDbNameFromUri(uri: string | undefined): string {
+  if (!uri) return '';
+  try {
+    const match = uri.match(/^mongodb(\+srv)?:\/\/[^/]*\/([^/?]+)/);
+    return match ? decodeURIComponent(match[2]) : '';
+  } catch {
+    return '';
+  }
 }

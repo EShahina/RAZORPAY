@@ -12,8 +12,7 @@ import Returns from './pages/Returns'
 import PolicySimulator from './pages/PolicySimulator'
 import ModelPerformance from './pages/ModelPerformance'
 import ModelHealth from './pages/ModelHealth'
-import DemoMode from './pages/DemoMode'
-import AILimitations from './pages/AILimitations'
+
 
 export default function App() {
   return (
@@ -31,8 +30,7 @@ export default function App() {
           <Route path="/policy-simulator" element={<PolicySimulator />} />
           <Route path="/model-performance" element={<ModelPerformance />} />
           <Route path="/model-health" element={<ModelHealth />} />
-          <Route path="/demo" element={<DemoMode />} />
-          <Route path="/limitations" element={<AILimitations />} />
+
         </Route>
       </Routes>
     </StoreProvider>

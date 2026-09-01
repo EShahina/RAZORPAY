@@ -11,8 +11,7 @@ import {
   Sliders,
   BarChart3,
   Activity,
-  Play,
-  Brain,
+
   Menu,
   X,
 } from 'lucide-react';
@@ -29,8 +28,7 @@ const navItems = [
   { to: '/policy-simulator', label: 'Policy Simulator', icon: Sliders },
   { to: '/model-performance', label: 'Model Performance', icon: BarChart3 },
   { to: '/model-health', label: 'Model Health', icon: Activity },
-  { to: '/demo', label: 'Demo Mode', icon: Play },
-  { to: '/limitations', label: 'AI Limitations', icon: Brain },
+
 ];
 
 export default function Layout() {

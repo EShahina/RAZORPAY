@@ -10,10 +10,10 @@ describe('HTTP API integration (Part 2.1 / 2.2 / 7.1 / 7.4)', () => {
   let app: Express;
 
   beforeAll(async () => {
-    const built = createApp({ dbMemory: true });
+    const built = await createApp({ dbMemory: true });
     app = built.app;
     // Seed an in-memory corpus so list/score/simulator endpoints have data.
-    seedDatabase(built.config.modelPath);
+    await seedDatabase(built.config.modelPath);
   });
 
   afterAll(() => {

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import type { Config } from '../config.js';
-import { getDb } from '../db/index.js';
+import { getStore } from '../db/store.js';
 import { runSimulation, actionForScore, type ScoreRow } from '../services/costModel.js';
 
 /**
@@ -14,18 +14,14 @@ import { runSimulation, actionForScore, type ScoreRow } from '../services/costMo
 export function simulatorRouter(config: Config): Router {
   const router = Router();
 
-  router.get('/policy', (req: Request, res: Response) => {
+  router.get('/policy', async (req: Request, res: Response) => {
     const q = z
       .object({ threshold: z.coerce.number().min(0).max(100).optional().default(60) })
       .safeParse(req.query);
     if (!q.success) return res.status(400).json({ error: 'invalid threshold' });
     const threshold = q.data.threshold;
 
-    const rows = (getDb()
-      .prepare(
-        `SELECT amount, risk_score, actual_fraud FROM transactions`,
-      )
-      .all() as Array<{ amount: number; risk_score: number; actual_fraud: number }>).map(
+    const rows = (await getStore().allTransactionsForSimulator()).map(
       (r) => ({ amount: r.amount, riskScore: r.risk_score, actualFraud: r.actual_fraud === 1 }) as ScoreRow,
     );
 
