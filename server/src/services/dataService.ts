@@ -264,6 +264,24 @@ function buildSeedAlerts(transactions: Record<string, unknown>[]): Record<string
 
 export type MerchantDecision = 'allow' | 'verify' | 'review' | 'manual_review' | 'block';
 
+/**
+ * Seed the operational alerts whenever the alerts store is empty, deriving them
+ * from high-risk transactions already present in the store. This runs on every
+ * startup so a pre-populated (Mongo) store still gets alerts without forcing a
+ * full corpus re-seed that would wipe merchant decisions/feedback.
+ */
+export async function seedAlertsIfEmpty(): Promise<number> {
+  const existing = await getStore().listAlerts({});
+  if (existing.length > 0) return 0;
+  const { rows } = await getStore().listTransactions(500, 0);
+  const txs = rows.map((t) => ({
+    id: t.id,
+    risk_score: t.risk_score,
+    amount: t.amount,
+  }));
+  return getStore().replaceAlerts(buildSeedAlerts(txs));
+}
+
 /** Record a merchant's final decision on a transaction (Part 6: human-in-the-loop). */
 export async function recordMerchantDecision(
   txnId: string,

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.js';
 import { initStore } from './db/store.js';
 import { loadModel } from './model/scorer.js';
-import { seedDatabase, countTransactions } from './services/dataService.js';
+import { seedDatabase, countTransactions, seedAlertsIfEmpty } from './services/dataService.js';
 import { logger } from './lib/logger.js';
 import { webhookRouter } from './routes/webhooks.js';
 import { transactionsRouter } from './routes/transactions.js';
@@ -36,6 +36,10 @@ export async function createApp(opts?: { skipSeed?: boolean; dbMemory?: boolean 
     } else {
       logger.info('database already populated; skipping startup seed');
     }
+    // Ensure alerts exist regardless: a pre-populated store (e.g. Mongo from a
+    // prior deploy) still needs operational alerts to drive the Alert Center.
+    const alertCount = await seedAlertsIfEmpty();
+    if (alertCount > 0) logger.info({ alertCount }, 'seeded alerts for existing store');
   }
 
   const app = express();
