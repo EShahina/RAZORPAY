@@ -3,6 +3,10 @@
 # ==============================
 FROM node:22-bookworm-slim AS frontend
 
+# better-sqlite3 (declared in the root package.json even though only the server
+# uses it) compiles from source on fresh installs
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
