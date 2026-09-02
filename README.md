@@ -71,7 +71,7 @@ reviewed, and either approved or blocked — all from a single operations consol
 
 - **Node.js 22+** (LTS recommended)
 - **npm 10+**
-- *(Optional)* [Razorpay test-mode API keys](https://dashboard.razorpay.com/app/keys)
+
 
 ### Frontend
 
@@ -138,8 +138,7 @@ docker run -p 8080:8080 \
   merchantshield
 ```
 
-`render.yaml` ships with the repo for one-click deployment to
-[Render](https://render.com) (Web Service, Docker runtime, auto-deploy on push).
+
 
 ---
 
@@ -181,13 +180,7 @@ npm --prefix server run test
 
 ---
 
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on opening issues, coding
-standards, and submitting pull requests.
 
 ---
 
-## 📄 License
 
-This project is **UNLICENSED** — proprietary and not licensed for redistribution.
