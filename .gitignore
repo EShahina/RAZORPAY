@@ -1,5 +1,16 @@
-# Logs
-logs
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build outputs ----
+dist/
+dist-ssr/
+server/dist/
+
+# ---- TypeScript build info ----
+*.tsbuildinfo
+
+# ---- Logs ----
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,16 +18,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# ---- Environment & secrets ----
+.env
+.env.local
+.env.*.local
+server/.env
 *.local
-*.pid
 
-# Editor directories and files
+# ---- Editor / OS ----
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -24,20 +36,17 @@ dist-ssr
 *.sln
 *.sw?
 
-# ---- MerchantShield server ----
-server/node_modules
-server/dist
-server/.env
+# ---- Process / runtime files ----
+*.pid
+*.seed
+*.tgz
+server/*.pid
+server/*.log
+
+# ---- MerchantShield data (SQLite + ML assets) ----
 server/data/*.db
 server/data/*.db-journal
 server/data/*.db-shm
 server/data/*.db-wal
-server/*.log
-server/*.pid
 server/ml/data/corpus.csv
 server/ml/data/corpus_meta.json
-
-# TypeScript build info
-server/*.tsbuildinfo	server/dist/
-dist/
-*.tsbuildinfo

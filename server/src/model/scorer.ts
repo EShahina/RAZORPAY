@@ -66,7 +66,7 @@ export function scoreFeatures(raw: Record<string, number>): {
 } {
   const model = getModel();
   const featureIndex: Record<string, number> = {};
-  model.feature_names.forEach((name, i) => {
+  model.feature_names.forEach((name) => {
     featureIndex[name] = raw[name] ?? 0;
   });
 

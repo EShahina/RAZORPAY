@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import type { Config } from '../config.js';
 import { scoreRawEvent } from '../services/risk.js';
-import { computeFeatures } from '../services/features.js';
 import { getModel } from '../model/scorer.js';
 import { getStore } from '../db/store.js';
 import { recordMerchantDecision, recordFeedback } from '../services/dataService.js';
@@ -20,6 +19,7 @@ const scoreSchema = z.object({
 });
 
 export function transactionsRouter(config: Config): Router {
+  void config;
   const router = Router();
 
   // POST /api/transactions/score — score one transaction (idempotent given same input)
@@ -29,15 +29,6 @@ export function transactionsRouter(config: Config): Router {
       return res.status(400).json({ error: 'invalid payload', issues: parsed.error.issues });
     }
     const p = parsed.data;
-    const features = computeFeatures({
-      amount: p.amount,
-      merchantAvgAmount: p.merchantAvgAmount,
-      accountAgeDays: p.accountAgeDays,
-      attemptCount: p.attemptCount,
-      velocity: p.velocity,
-      priorChargebacks: p.priorChargebacks,
-      priorRefunds: p.priorRefunds,
-    });
     const result = scoreRawEvent({ ...p, model: getModel() });
     logger.info({ amount: p.amount, risk: result.riskScore }, 'scored transaction');
     return res.status(200).json({

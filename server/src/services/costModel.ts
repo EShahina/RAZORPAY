@@ -101,7 +101,6 @@ export function runSimulation(rows: ScoreRow[], threshold: number, c: CostConsta
   }
 
   const fraudCount = rows.filter((r) => r.actualFraud).length;
-  const totalFraudFlagged = counts.review + counts.block;
   const recall = fraudCount > 0 ? fraudCaughtCount / fraudCount : 0;
   const fpr = rows.length - fraudCount > 0 ? flaggedLegitCount / (rows.length - fraudCount) : 0;
 

@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scoreRawEvent } from './risk.js';
-import { computeFeatures } from './features.js';
 import { getModel, loadModel } from '../model/scorer.js';
 import { getStore } from '../db/store.js';
 import { logger } from '../lib/logger.js';

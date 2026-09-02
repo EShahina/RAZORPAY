@@ -29,6 +29,15 @@ const PAYMENT_ICONS: Record<PaymentMethod, typeof CreditCard> = {
   emi: Calendar,
 };
 
+function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField; sortDir: SortDir }) {
+  if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-zinc-600" />;
+  return sortDir === 'asc' ? (
+    <ArrowUp className="h-3 w-3 text-purple-400" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-purple-400" />
+  );
+}
+
 export default function Transactions() {
   const { transactions } = useStore();
   const navigate = useNavigate();
@@ -81,15 +90,6 @@ export default function Transactions() {
       setSortField(field);
       setSortDir('desc');
     }
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-zinc-600" />;
-    return sortDir === 'asc' ? (
-      <ArrowUp className="h-3 w-3 text-purple-400" />
-    ) : (
-      <ArrowDown className="h-3 w-3 text-purple-400" />
-    );
   };
 
   return (
@@ -160,21 +160,21 @@ export default function Transactions() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Order ID</th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort('amount')} className="flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                    Amount <SortIcon field="amount" />
+                    Amount <SortIcon field="amount" sortField={sortField} sortDir={sortDir} />
                   </button>
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Customer</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Method</th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort('riskScore')} className="flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                    Risk Score <SortIcon field="riskScore" />
+                    Risk Score <SortIcon field="riskScore" sortField={sortField} sortDir={sortDir} />
                   </button>
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Action</th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort('createdAt')} className="flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                    Time <SortIcon field="createdAt" />
+                    Time <SortIcon field="createdAt" sortField={sortField} sortDir={sortDir} />
                   </button>
                 </th>
                 <th className="w-8 px-4 py-3" />
